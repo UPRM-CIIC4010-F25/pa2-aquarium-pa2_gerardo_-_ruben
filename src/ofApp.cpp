@@ -3,6 +3,13 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
 
+    bgm.load("music/music.mp3");// Load background music
+    bgm.setLoop(true); // Enable looping
+    bgm.setVolume(0.5f);
+    bgm.play(); // Start background music
+
+
+
     ofSetFrameRate(60);
     ofSetBackgroundColor(ofColor::blue);
     backgroundImage.load("background.png");
@@ -91,6 +98,15 @@ void ofApp::exit(){
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
+    if (key == 'm' || key == 'M') { // Toggle music on/off
+        musicOn = !musicOn;
+        if (musicOn) {
+            if (!bgm.isPlaying()) bgm.play(); // Resume music if it was stopped
+            bgm.setVolume(0.5f);
+        } else {
+            bgm.setVolume(0.0f);  //  mute
+        }
+    }
     if (lastEvent.isGameExit()) { 
         ofLogNotice() << "Game has ended. Press ESC to exit." << std::endl;
         return; // Ignore other keys after game over

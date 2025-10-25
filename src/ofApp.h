@@ -9,6 +9,11 @@ const int OF_KEY_SPACEBAR = ' '; // Define spacebar key constant
 class ofApp : public ofBaseApp{
 
 	public:
+
+
+		ofSoundPlayer bgm;
+    	bool musicOn = true; // optional toggle
+
 		void setup() override;
 		void update() override;
 		void draw() override;
