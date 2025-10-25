@@ -170,11 +170,19 @@ void Aquarium::addAquariumLevel(std::shared_ptr<AquariumLevel> level){
 }
 
 void Aquarium::update() {
+    // Keep aquarium bounds synced to the current window size
+    m_width  = ofGetWidth();
+    m_height = ofGetHeight();
+
+    // Update bounds for every creature and move them
     for (auto& creature : m_creatures) {
-        creature->move();
+        creature->setBounds(m_width - 20, m_height - 20);  // optional margin
+        creature->move();  // move() already calls bounce()
     }
+
     this->Repopulate();
 }
+
 
 void Aquarium::draw() const {
     for (const auto& creature : m_creatures) {
