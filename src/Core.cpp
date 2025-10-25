@@ -12,8 +12,36 @@ void Creature::normalize() {
 }
 
 void Creature::bounce() {
-    // should implement boundary controls here
+    // Use collision circle diameter if no sprite size is available
+    const float sw = (m_collisionRadius > 0.0f) ? (m_collisionRadius * 2.0f) : 20.0f;
+    const float sh = (m_collisionRadius > 0.0f) ? (m_collisionRadius * 2.0f) : 20.0f;
+
+    // Use the bounds set by Aquarium::setBounds; if zero, fall back to current window size
+    const float limitW = (m_width  > 0.0f) ? m_width  : static_cast<float>(ofGetWidth());
+    const float limitH = (m_height > 0.0f) ? m_height : static_cast<float>(ofGetHeight());
+
+    const float maxX = std::max(0.0f, limitW - sw);
+    const float maxY = std::max(0.0f, limitH - sh);
+
+    // Horizontal
+    if (m_x < 0.0f) {
+        m_x = 0.0f;
+        m_dx = -m_dx;
+    } else if (m_x > maxX) {
+        m_x = maxX;
+        m_dx = -m_dx;
+    }
+
+    // Vertical
+    if (m_y < 0.0f) {
+        m_y = 0.0f;
+        m_dy = -m_dy;
+    } else if (m_y > maxY) {
+        m_y = maxY;
+        m_dy = -m_dy;
+    }
 }
+
 
 
 void GameEvent::print() const {

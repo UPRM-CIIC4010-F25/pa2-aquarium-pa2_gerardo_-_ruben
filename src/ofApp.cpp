@@ -126,7 +126,7 @@ void ofApp::keyPressed(int key){
     if(gameManager->GetActiveSceneName() == GameSceneKindToString(GameSceneKind::GAME_INTRO)){
         switch (key)
         {
-        case OF_KEY_SPACE:
+        case OF_KEY_SPACEBAR:
             gameManager->Transition(GameSceneKindToString(GameSceneKind::AQUARIUM_GAME));
             break;
         

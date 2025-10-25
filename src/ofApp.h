@@ -3,6 +3,8 @@
 #include "ofMain.h"
 #include "Aquarium.h"
 
+const int OF_KEY_SPACEBAR = ' '; // Define spacebar key constant
+
 
 class ofApp : public ofBaseApp{
 
