@@ -24,10 +24,11 @@ Grading
 ## Team Info
 | Student Number | Student Name | Student Email |
 |-|-|-|
-|(802246331)| (Ruben Aviles Borrali)| (ruben.aviles@upr.edu) |
-|(STUDENT NUMBER HERE)| (STUDENT NAME HERE)| (STUDENT EMAIL HERE) |
+|(802-24-6331)| (Ruben Aviles Borrali)| (ruben.aviles@upr.edu) |
+|(802-24-1355)| (Gerardo A. Garcia Rosa)| (gerardo.garcia6@upr.edu) |
 
 ---
+
 
 Any project that doesn't compile will receive a 0.
 
