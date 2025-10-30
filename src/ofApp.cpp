@@ -35,6 +35,7 @@ void ofApp::setup(){
     // Lets setup the aquarium
     myAquarium = std::make_shared<Aquarium>(ofGetWindowWidth(), ofGetWindowHeight(), spriteManager);
     player = std::make_shared<PlayerCreature>(ofGetWindowWidth()/2 - 50, ofGetWindowHeight()/2 - 50, DEFAULT_SPEED, this->spriteManager->GetSprite(AquariumCreatureType::NPCreature));
+    player->setCollisionRadius(35.0f);
     player->setDirection(0, 0); // Initially stationary
     player->setBounds(ofGetWindowWidth() - 20, ofGetWindowHeight() - 20);
 
@@ -60,7 +61,7 @@ void ofApp::setup(){
         std::make_shared<GameSprite>("game-over.png", ofGetWindowWidth(), ofGetWindowHeight())
     ));
 
-    ofSetLogLevel(OF_LOG_NOTICE); // Set default log level
+    ofSetLogLevel(OF_LOG_VERBOSE); // Set default log level
 }
 
 //--------------------------------------------------------------

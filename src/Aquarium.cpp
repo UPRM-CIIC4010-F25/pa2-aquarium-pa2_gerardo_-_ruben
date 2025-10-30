@@ -15,7 +15,7 @@ string AquariumCreatureTypeToString(AquariumCreatureType t){
 
 // PlayerCreature Implementation
 PlayerCreature::PlayerCreature(float x, float y, int speed, std::shared_ptr<GameSprite> sprite)
-: Creature(x, y, speed, 10.0f, 1, sprite) {}
+: Creature(x, y, speed, 35.0f, 1, sprite) {}
 
 
 void PlayerCreature::setDirection(float dx, float dy) {
@@ -289,29 +289,61 @@ void AquariumGameScene::Update(){
 
     if (this->updateControl.tick()) {
         event = DetectAquariumCollisions(this->m_aquarium, this->m_player);
+
         if (event != nullptr && event->isCollisionEvent()) {
             ofLogVerbose() << "Collision detected between player and NPC!" << std::endl;
-            if(event->creatureB != nullptr){
+
+            if (event->creatureB != nullptr) {
                 event->print();
-                if(this->m_player->getPower() < event->creatureB->getValue()){
+                {
+                    auto a = this->m_player;
+                    auto b = event->creatureB;
+
+                    float ar = a->getCollisionRadius();
+                    float br = b->getCollisionRadius();
+
+                    float ax = a->getX() + ar, ay = a->getY() + ar;
+                    float bx = b->getX() + br, by = b->getY() + br;
+                    float nx = ax - bx, ny = ay - by;
+                    float dist2 = nx*nx + ny*ny;
+                    float sumr  = ar + br;
+
+                    if (dist2 < sumr*sumr) {
+                        float dist = std::sqrt(std::max(1e-6f, dist2));
+                        nx /= dist; ny /= dist;
+                        float overlap = sumr - dist;
+                        a->translate( nx * overlap * 0.60f,  ny * overlap * 0.60f);
+                        b->translate(-nx * overlap * 0.40f, -ny * overlap * 0.40f);
+                        a->reflect( nx, ny);
+                        b->reflect(-nx,-ny);
+                    }
+                }
+                if (this->m_player->getPower() < event->creatureB->getValue()) {
                     ofLogNotice() << "Player is too weak to eat the creature!" << std::endl;
-                    this->m_player->loseLife(3*60); // 3 frames debounce, 3 seconds at 60fps
-                    if(this->m_player->getLives() <= 0){
+                    this->m_player->loseLife(3*60); // 3 seconds @60fps
+                    {
+                        float ar = this->m_player->getCollisionRadius();
+                        float br = event->creatureB->getCollisionRadius();
+                        float ax = this->m_player->getX() + ar, ay = this->m_player->getY() + ar;
+                        float bx = event->creatureB->getX() + br, by = event->creatureB->getY() + br;
+                        float kx = ax - bx, ky = ay - by;
+                        float klen = std::sqrt(kx*kx + ky*ky);
+                        if (klen > 1e-6f) { kx /= klen; ky /= klen; }
+                        this->m_player->translate(kx * 12.0f, ky * 12.0f);
+                    }
+
+                    if (this->m_player->getLives() <= 0) {
                         this->m_lastEvent = std::make_shared<GameEvent>(GameEventType::GAME_OVER, this->m_player, nullptr);
                         return;
                     }
-                }
-                else{
+                } else {
                     this->m_aquarium->removeCreature(event->creatureB);
                     this->m_player->addToScore(1, event->creatureB->getValue());
-                    if (this->m_player->getScore() % 25 == 0){
+                    if (this->m_player->getScore() % 25 == 0) {
                         this->m_player->increasePower(1);
                         ofLogNotice() << "Player power increased to " << this->m_player->getPower() << "!" << std::endl;
                     }
-                    
                 }
-                
-                
 
             } else {
                 ofLogError() << "Error: creatureB is null in collision event." << std::endl;
@@ -319,8 +351,8 @@ void AquariumGameScene::Update(){
         }
         this->m_aquarium->update();
     }
-
 }
+
 
 void AquariumGameScene::Draw() {
     this->m_player->draw();

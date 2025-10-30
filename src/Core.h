@@ -70,11 +70,11 @@ protected:
     float m_y = 0.0f;
     float m_dx = 0.0f;
     float m_dy = 0.0f;
-    int m_speed = 0;
+    int   m_speed = 0;
     float m_width = 0.0f;
     float m_height = 0.0f;
     float m_collisionRadius = 0.0f;
-    int m_value = 0;
+    int   m_value = 0;
     std::shared_ptr<GameSprite> m_sprite;
 
 public:
@@ -83,24 +83,46 @@ public:
     virtual void draw() const = 0;
 
     virtual float getCollisionRadius() const { return m_collisionRadius; }
-    virtual void setCollisionRadius(float radius) { m_collisionRadius = radius; }
+    virtual void  setCollisionRadius(float radius) { m_collisionRadius = radius; }
 
     float getX() const { return m_x; }
     float getY() const { return m_y; }
-    int getSpeed() const { return m_speed; }
-    void setSpeed(int speed) { m_speed = speed; }
-    void setFlipped(bool flipped) {
-        if (m_sprite) {
-            m_sprite->setFlipped(flipped);
-        }
+    int   getSpeed() const { return m_speed; }
+    void  setSpeed(int speed) { m_speed = speed; }
+    void  setFlipped(bool flipped) {
+        if (m_sprite) m_sprite->setFlipped(flipped);
     }
-    void setSprite(std::shared_ptr<GameSprite> sprite) { m_sprite = std::move(sprite); }
-    int getValue() const { return m_value; }
+    void  setSprite(std::shared_ptr<GameSprite> sprite) { m_sprite = std::move(sprite); }
+    int   getValue() const { return m_value; }
 
     void setBounds(int w, int h);
     void normalize();
     void bounce();
+
+    // --- ADDED HELPERS (inline) ---
+    inline void translate(float dx, float dy){
+        m_x += dx;
+        m_y += dy;
+        bounce();
+    }
+
+    inline void reflect(float nx, float ny){
+        float len = std::sqrt(nx*nx + ny*ny);
+        if (len < 1e-6f) return;
+        nx /= len; ny /= len;
+        float dot = m_dx*nx + m_dy*ny;
+        m_dx -= 2.0f * dot * nx;
+        m_dy -= 2.0f * dot * ny;
+        normalize();
+    }
+
+    inline void setDirection(float dx, float dy){
+        m_dx = dx;
+        m_dy = dy;
+        normalize();
+    }
 };
+
 
 // GameEvents
 enum class GameEventType {
