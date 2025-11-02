@@ -61,7 +61,7 @@ void ofApp::setup(){
         std::make_shared<GameSprite>("game-over.png", ofGetWindowWidth(), ofGetWindowHeight())
     ));
 
-    ofSetLogLevel(OF_LOG_VERBOSE); // Set default log level
+    ofSetLogLevel(OF_LOG_NOTICE); // Set default log level
 }
 
 //--------------------------------------------------------------

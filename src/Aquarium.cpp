@@ -15,7 +15,10 @@ string AquariumCreatureTypeToString(AquariumCreatureType t){
 
 // PlayerCreature Implementation
 PlayerCreature::PlayerCreature(float x, float y, int speed, std::shared_ptr<GameSprite> sprite)
-: Creature(x, y, speed, 35.0f, 1, sprite) {}
+: Creature(x, y, speed, 35.0f, 1, sprite) {
+    m_baseSpeed = speed;
+    m_speedCap  = speed * 2;
+}
 
 
 void PlayerCreature::setDirection(float dx, float dy) {
@@ -36,7 +39,28 @@ void PlayerCreature::reduceDamageDebounce() {
     }
 }
 
+void PlayerCreature::activateSpeedBoost(float multiplier, int frames) {
+    const int MAX_FRAMES = 10 * 60;
+    const int HARD_CAP   = m_baseSpeed * 2;
+
+    m_speedBoostFrames = std::min(frames, MAX_FRAMES);
+    int target = static_cast<int>(std::round(m_baseSpeed * multiplier));
+    m_speedCap = HARD_CAP;
+    m_speed    = std::min(target, HARD_CAP);
+
+    ofLogNotice() << "Speed boost active. Speed=" << m_speed
+                  << "  time left=" << m_speedBoostFrames << " frames" << std::endl;
+}
+
 void PlayerCreature::update() {
+    if (m_speedBoostFrames > 0) {
+        --m_speedBoostFrames;
+        if (m_speedBoostFrames <= 0) {
+            m_speedBoostFrames = 0;
+            m_speed = m_baseSpeed;
+            ofLogNotice() << "Speed boost ended. Speed reset to " << m_speed << std::endl;
+        }
+    }
     this->reduceDamageDebounce();
     this->move();
 }
@@ -136,6 +160,7 @@ void BiggerFish::draw() const {
 AquariumSpriteManager::AquariumSpriteManager(){
     this->m_npc_fish = std::make_shared<GameSprite>("base-fish.png", 70,70);
     this->m_big_fish = std::make_shared<GameSprite>("bigger-fish.png", 120, 120);
+    this->m_speed_powerup = std::make_shared<GameSprite>("powerup-speed.png", 48, 48);
 }
 
 std::shared_ptr<GameSprite> AquariumSpriteManager::GetSprite(AquariumCreatureType t){
@@ -179,7 +204,7 @@ void Aquarium::update() {
         creature->setBounds(m_width - 20, m_height - 20);  // optional margin
         creature->move();  // move() already calls bounce()
     }
-
+    maybeSpawnPowerUp();
     this->Repopulate();
 }
 
@@ -188,8 +213,34 @@ void Aquarium::draw() const {
     for (const auto& creature : m_creatures) {
         creature->draw();
     }
+    for (const auto& p : m_powerups) {
+        if (p.sprite) p.sprite->draw(p.x - p.radius, p.y - p.radius);
+    }
 }
 
+void Aquarium::maybeSpawnPowerUp() {
+    if ((int)m_powerups.size() >= 2) return;
+
+    ++m_powerupSpawnTimer;
+    if (m_powerupSpawnTimer < 90) return;
+    m_powerupSpawnTimer = 0;
+
+    if ((rand() % 10) >= 8) return;
+
+    PowerUpItem p;
+    p.radius = 24.f;
+    p.sprite = m_sprite_manager->GetPowerUpSprite(PowerUpType::SpeedBoost);
+
+    int margin = 30;
+    p.x = (float)(margin + rand() % std::max(1, getWidth()  - 2*margin));
+    p.y = (float)(margin + rand() % std::max(1, getHeight() - 2*margin));
+
+    m_powerups.push_back(std::move(p));
+}
+
+void Aquarium::removePowerUpAt(size_t idx) {
+    if (idx < m_powerups.size()) m_powerups.erase(m_powerups.begin() + idx);
+}
 
 void Aquarium::removeCreature(std::shared_ptr<Creature> creature) {
     auto it = std::find(m_creatures.begin(), m_creatures.end(), creature);
@@ -349,6 +400,22 @@ void AquariumGameScene::Update(){
                 ofLogError() << "Error: creatureB is null in collision event." << std::endl;
             }
         }
+        {
+            auto& powerUps = const_cast<std::vector<PowerUpItem>&>(m_aquarium->getPowerUps());
+            for (size_t i = 0; i < powerUps.size();) {
+                const PowerUpItem& p = powerUps[i];
+                float ar = m_player->getCollisionRadius();
+                float dx = (m_player->getX() + ar) - p.x;
+                float dy = (m_player->getY() + ar) - p.y;
+                float rr = ar + p.radius;
+                if (dx*dx + dy*dy <= rr*rr) {
+                    m_player->activateSpeedBoost(2.0f, 10 * 60);
+                    m_aquarium->removePowerUpAt(i);
+                    continue;
+                }
+                ++i;
+            }
+        }
         this->m_aquarium->update();
     }
 }
@@ -370,6 +437,12 @@ void AquariumGameScene::paintAquariumHUD(){
     for (int i = 0; i < this->m_player->getLives(); ++i) {
         ofSetColor(ofColor::red);
         ofDrawCircle(panelWidth + i * 20, 50, 5);
+    }
+    ofSetColor(ofColor::white);
+    if (this->m_player->hasSpeedBoost()) {
+        int frames = this->m_player->speedBoostFramesLeft();
+        int secs = (frames + 59) / 60;
+        ofDrawBitmapString("Speed Boost: " + std::to_string(secs) + "s", panelWidth, 70);
     }
     ofSetColor(ofColor::white); // Reset color to white for other drawings
 }

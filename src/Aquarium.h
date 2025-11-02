@@ -12,6 +12,15 @@ enum class AquariumCreatureType {
     BiggerFish
 };
 
+enum class PowerUpType { SpeedBoost };
+
+struct PowerUpItem {
+    float x = 0.f, y = 0.f;
+    float radius = 20.f;
+    PowerUpType type = PowerUpType::SpeedBoost;
+    std::shared_ptr<GameSprite> sprite;
+};
+
 string AquariumCreatureTypeToString(AquariumCreatureType t);
 
 class AquariumLevelPopulationNode{
@@ -67,12 +76,21 @@ public:
     void loseLife(int debounce);
     void increasePower(int value) { m_power += value; }
     void reduceDamageDebounce();
-    
+
+    void activateSpeedBoost(float multiplier, int frames);
+    bool hasSpeedBoost() const { return m_speedBoostFrames > 0; }
+    int  speedBoostFramesLeft() const { return m_speedBoostFrames; }
+
 private:
     int m_score = 0;
     int m_lives = 3;
     int m_power = 1; // mark current power lvl
     int m_damage_debounce = 0; // frames to wait after eating
+
+    int m_baseSpeed = 0;
+    int m_speedBoostFrames = 0;
+    int m_speedCap = 0;
+    
 };
 
 class NPCreature : public Creature {
@@ -99,9 +117,11 @@ class AquariumSpriteManager {
         AquariumSpriteManager();
         ~AquariumSpriteManager() = default;
         std::shared_ptr<GameSprite>GetSprite(AquariumCreatureType t);
+        std::shared_ptr<GameSprite> GetPowerUpSprite(PowerUpType t) { return m_speed_powerup; }
     private:
         std::shared_ptr<GameSprite> m_npc_fish;
         std::shared_ptr<GameSprite> m_big_fish;
+        std::shared_ptr<GameSprite> m_speed_powerup;
 };
 
 
@@ -124,6 +144,10 @@ public:
     int getWidth() const { return m_width; }
     int getHeight() const { return m_height; }
 
+    int  getPowerUpCount() const { return (int)m_powerups.size(); }
+    const std::vector<PowerUpItem>& getPowerUps() const { return m_powerups; }
+    void removePowerUpAt(size_t idx);
+
 
 private:
     int m_maxPopulation = 0;
@@ -134,6 +158,10 @@ private:
     std::vector<std::shared_ptr<Creature>> m_next_creatures;
     std::vector<std::shared_ptr<AquariumLevel>> m_aquariumlevels;
     std::shared_ptr<AquariumSpriteManager> m_sprite_manager;
+
+    std::vector<PowerUpItem> m_powerups;
+    int m_powerupSpawnTimer = 0;
+    void maybeSpawnPowerUp();
 };
 
 
