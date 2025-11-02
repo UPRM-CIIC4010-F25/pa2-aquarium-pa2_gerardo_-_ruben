@@ -4,14 +4,14 @@
 
 string AquariumCreatureTypeToString(AquariumCreatureType t){
     switch(t){
-        case AquariumCreatureType::BiggerFish:
-            return "BiggerFish";
-        case AquariumCreatureType::NPCreature:
-            return "BaseFish";
-        default:
-            return "UknownFish";
+        case AquariumCreatureType::BiggerFish: return "BiggerFish";
+        case AquariumCreatureType::NPCreature: return "BaseFish";
+        case AquariumCreatureType::ClownFish:  return "ClownFish";
+        case AquariumCreatureType::BlueTang:   return "BlueTang";    
+        default: return "UknownFish";
     }
 }
+
 
 // PlayerCreature Implementation
 PlayerCreature::PlayerCreature(float x, float y, int speed, std::shared_ptr<GameSprite> sprite)
@@ -131,20 +131,194 @@ void BiggerFish::draw() const {
     this->m_sprite->draw(this->m_x, this->m_y);
 }
 
+// ===================== ClownFish =====================
+ClownFish::ClownFish(float x, float y, int speed, std::shared_ptr<GameSprite> sprite)
+: NPCreature(x, y, speed, std::move(sprite)) {
+    m_creatureType = AquariumCreatureType::ClownFish;
+    homeX = x; 
+    homeY = y;
+    setCollisionRadius(50);
+    setHidden(true);            // empieza escondido
+    scheduleNextCuckoo();       // programa la primera salida
+}
+void ClownFish::scheduleNextCuckoo() {
+    nextCuckooAt = ofGetElapsedTimef() + ofRandom(intervalMin, intervalMax);
+}
+
+void ClownFish::setHidden(bool h) {
+    hidden = h;
+    if (hidden) {
+        // “se guarda” en la anémona
+        m_x = homeX; 
+        m_y = homeY;
+        m_dx = 0; m_dy = 0;
+        setCollisionRadius(1);     // prácticamente sin colisión
+    } else {
+        setCollisionRadius(50);
+    }
+}
+void ClownFish::move() {
+    float now = ofGetElapsedTimef();
+
+    switch (state) {
+    case State::Hidden: {
+        // Espera hasta la hora de salir
+        if (now >= nextCuckooAt) {
+            // Comienza a emerger en dirección ligeramente hacia arriba
+            angle = ofRandom(-0.6f, 0.6f); // rumbo inicial lateral
+            state = State::Emerging;
+            stateEnd = now + emergeDur;
+            setHidden(false);
+        }
+        return; // nada más que hacer oculto
+    }
+
+    case State::Emerging: {
+        // Avanza suavemente fuera de la anémona
+        float vx = cosf(angle);
+        float vy = -0.4f + sinf(angle*0.6f)*0.1f; // sesgo hacia arriba
+        float len = std::max(1e-6f, sqrtf(vx*vx + vy*vy));
+        m_dx = vx/len; m_dy = vy/len;
+        m_sprite->setFlipped(m_dx < 0.f);
+
+        m_x += m_dx * m_speed;
+        m_y += m_dy * m_speed;
+
+        if (now >= stateEnd) {
+            state = State::Roam;
+            stateEnd = now + ofRandom(roamDurMin, roamDurMax);
+        }
+        bounce();
+        break;
+    }
+
+    case State::Roam: {
+        // Nada libre (random walk suave)
+        angle += ofRandom(-0.06f, 0.06f);
+        float vx = cosf(angle) + ofRandom(-0.04f, 0.04f);
+        float vy = sinf(angle) + 0.9f * sinf(TWO_PI * 0.12f * now) + ofRandom(-0.02f, 0.02f);
+        float len = std::max(1e-6f, sqrtf(vx*vx + vy*vy));
+        m_dx = vx/len; m_dy = vy/len;
+        m_sprite->setFlipped(m_dx < 0.f);
+
+        m_x += m_dx * m_speed;
+        m_y += m_dy * m_speed;
+
+        if (now >= stateEnd) {
+            state = State::Returning;
+        }
+        bounce();
+        break;
+    }
+
+    case State::Returning: {
+        // Vuelve directo a la anémona
+        float hx = homeX - m_x, hy = homeY - m_y;
+        float d = std::max(1e-6f, sqrtf(hx*hx + hy*hy));
+        m_dx = hx/d; m_dy = hy/d;
+        m_sprite->setFlipped(m_dx < 0.f);
+
+        m_x += m_dx * (m_speed * 1.2f); // un pelín más rápido retornando
+        m_y += m_dy * (m_speed * 1.2f);
+
+        if (d < 16.f) {
+            // llegó
+            state = State::Rest;
+            stateEnd = now + ofRandom(restMin, restMax);
+            // “encaja” exactamente en el hogar
+            m_x = homeX; m_y = homeY;
+        }
+        bounce();
+        break;
+    }
+
+    case State::Rest: {
+        // Descansa dentro/encima de la anémona con una leve mecedura
+        m_x = homeX + sinf(now*2.1f)*1.5f;
+        m_y = homeY + cosf(now*2.3f)*1.5f;
+        if (now >= stateEnd) {
+            state = State::Hidden;
+            setHidden(true);
+            scheduleNextCuckoo();
+        }
+        break;
+    }
+    }
+}
+
+
+
+void ClownFish::draw() const {
+    if (hidden) return;
+    m_sprite->setFlipped(m_dx < 0.f);
+    m_sprite->draw(m_x, m_y);
+}
+
+
+
+// ===================== BlueTang =====================
+BlueTang::BlueTang(float x, float y, int speed, std::shared_ptr<GameSprite> sprite)
+: NPCreature(x, y, speed, std::move(sprite)) {
+    m_creatureType = AquariumCreatureType::BlueTang;
+    heading = ofRandom(-PI, PI);
+    desiredHeading = heading;
+}
+
+void BlueTang::move() {
+    //cambia lentamente el rumbo deseado (random walk)
+    desiredHeading += ofRandom(-0.02f, 0.02f);
+
+    // limita cuánto puede girar por frame
+    float delta = ofWrapRadians(desiredHeading - heading);
+    delta = ofClamp(delta, -maxTurnRate, maxTurnRate);
+    heading = ofWrapRadians(heading + delta);
+
+    
+    t += 0.03f;
+    float vx = cosf(heading) * baseSpeed;
+    float vy = sinf(heading) * baseSpeed + sineAmp * sinf(TWO_PI * 1.2f * t);
+
+    m_dx = vx;
+    m_dy = vy;
+    normalize();              // asegura que (dx,dy) sea unitario para escalar con m_speed
+    m_sprite->setFlipped(m_dx < 0.f);
+
+    m_x += m_dx * m_speed;
+    m_y += m_dy * m_speed;
+
+    bounce();
+}
+
+void BlueTang::draw() const {
+    m_sprite->draw(m_x, m_y);
+}
+
+
 
 // AquariumSpriteManager
 AquariumSpriteManager::AquariumSpriteManager(){
     this->m_npc_fish = std::make_shared<GameSprite>("base-fish.png", 70,70);
     this->m_big_fish = std::make_shared<GameSprite>("bigger-fish.png", 120, 120);
+   // NUEVOS:
+    this->m_clown_fish = std::make_shared<GameSprite>("clown-fish.png", 60, 60);
+
+    this->m_blue_tang  = std::make_shared<GameSprite>("blue-tang.png", 70, 70);
+
+
+
 }
 
 std::shared_ptr<GameSprite> AquariumSpriteManager::GetSprite(AquariumCreatureType t){
     switch(t){
         case AquariumCreatureType::BiggerFish:
-            return std::make_shared<GameSprite>(*this->m_big_fish);
-            
+            return std::make_shared<GameSprite>(*this->m_big_fish);   
         case AquariumCreatureType::NPCreature:
             return std::make_shared<GameSprite>(*this->m_npc_fish);
+        case AquariumCreatureType::ClownFish:
+            return std::make_shared<GameSprite>(*m_clown_fish);
+        case AquariumCreatureType::BlueTang:
+            return std::make_shared<GameSprite>(*m_blue_tang);
+
         default:
             return nullptr;
     }
@@ -156,6 +330,30 @@ Aquarium::Aquarium(int width, int height, std::shared_ptr<AquariumSpriteManager>
     : m_width(width), m_height(height) {
         m_sprite_manager =  spriteManager;
     }
+
+void Aquarium::initSeafloor() { // 
+    if (!m_anemoneImg.isAllocated()) {
+    // Coloca tu PNG en bin/data/, por ejemplo: "anemone.png"
+    bool ok = m_anemoneImg.load("anemone.png");
+    ofLogNotice() << "[ANEMONE] load: " << ok;
+    ofEnableAlphaBlending();
+    }
+
+
+
+
+    m_anemones.clear();
+
+    m_sandHeight = std::max(80.f, ofGetHeight() * 0.18f);
+    float baseY  = ofGetHeight() - m_sandHeight + 12.f;
+
+    float marginX = 80.f; // separadas de los bordes
+    m_anemones.push_back({ marginX,               baseY, 70.f });          // izquierda
+    m_anemones.push_back({ ofGetWidth()-marginX,  baseY, 70.f });          // derecha
+
+    m_anemonesInit = true;
+}
+
 
 
 
@@ -174,6 +372,16 @@ void Aquarium::update() {
     m_width  = ofGetWidth();
     m_height = ofGetHeight();
 
+    if (!m_anemonesInit) initSeafloor();
+
+    // si cambia el tamaño de ventana, re-crear arena + anémonas
+    if (m_lastW != m_width || m_lastH != m_height) {
+        initSeafloor();
+        m_lastW = m_width;
+        m_lastH = m_height;
+    }
+
+
     // Update bounds for every creature and move them
     for (auto& creature : m_creatures) {
         creature->setBounds(m_width - 20, m_height - 20);  // optional margin
@@ -185,10 +393,32 @@ void Aquarium::update() {
 
 
 void Aquarium::draw() const {
+
+    // --- Anémonas (imagen o fallback) ---
+    for (const auto& a : m_anemones) {
+        float w = m_anemoneW;
+        float h = m_anemoneH;
+
+        float drawX = a.x - w * 0.5f;   // centrar
+        float drawY = a.y - h;          // base apoyada en arena
+
+        if (m_anemoneImg.isAllocated()) {
+            ofSetColor(255);            // sin tinte
+            m_anemoneImg.draw(drawX, drawY, w, h);
+        } else {
+            ofSetColor(240,120,140);
+            ofDrawCircle(a.x, a.y, 12);
+            ofSetColor(255);
+        }
+    }
+    ofPopStyle();
+
+    // --- Peces ---
     for (const auto& creature : m_creatures) {
         creature->draw();
     }
 }
+
 
 
 void Aquarium::removeCreature(std::shared_ptr<Creature> creature) {
@@ -218,21 +448,50 @@ std::shared_ptr<Creature> Aquarium::getCreatureAt(int index) {
 void Aquarium::SpawnCreature(AquariumCreatureType type) {
     int x = rand() % this->getWidth();
     int y = rand() % this->getHeight();
-    int speed = 1 + rand() % 25; // Speed between 1 and 25
+    int speed = 1 + rand() % 25;
 
     switch (type) {
-        case AquariumCreatureType::NPCreature:
-            this->addCreature(std::make_shared<NPCreature>(x, y, speed, this->m_sprite_manager->GetSprite(AquariumCreatureType::NPCreature)));
+
+        case AquariumCreatureType::NPCreature: {
+            addCreature(std::make_shared<NPCreature>(x, y, speed, m_sprite_manager->GetSprite(AquariumCreatureType::NPCreature)));
             break;
-        case AquariumCreatureType::BiggerFish:
-            this->addCreature(std::make_shared<BiggerFish>(x, y, speed, this->m_sprite_manager->GetSprite(AquariumCreatureType::BiggerFish)));
+        }
+
+        case AquariumCreatureType::BiggerFish: {
+            addCreature(std::make_shared<BiggerFish>(x, y, speed, m_sprite_manager->GetSprite(AquariumCreatureType::BiggerFish)));
             break;
-        default:
+        }
+
+        case AquariumCreatureType::ClownFish: {
+            if (!m_anemonesInit) initSeafloor();
+            const Anemone& A = m_anemones[ rand() % m_anemones.size() ];
+
+            float anemoneTopY   = A.y - m_anemoneH;
+            float tentacleBandY = anemoneTopY + m_anemoneH * ofRandom(0.35f, 0.50f);
+
+            int cx = (int)(A.x + ofRandom(-24.f, 24.f));
+            int cy = (int)(tentacleBandY + ofRandom(-8.f, 8.f));
+            int sp = 2 + rand() % 6; // 2..7, más natural
+
+            addCreature(std::make_shared<ClownFish>(cx, cy, sp, m_sprite_manager->GetSprite(AquariumCreatureType::ClownFish)));
+            break;
+        }
+
+        
+
+
+        case AquariumCreatureType::BlueTang: {    
+            addCreature(std::make_shared<BlueTang>(x, y, speed, m_sprite_manager->GetSprite(AquariumCreatureType::BlueTang)));
+            break;
+        }
+
+        default: {
             ofLogError() << "Unknown creature type to spawn!";
             break;
+        }
     }
-
 }
+
 
 
 // repopulation will be called from the levl class

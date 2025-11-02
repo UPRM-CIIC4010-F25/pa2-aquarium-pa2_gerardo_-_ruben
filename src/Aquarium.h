@@ -9,7 +9,9 @@
 
 enum class AquariumCreatureType {
     NPCreature,
-    BiggerFish
+    BiggerFish,
+    ClownFish,
+    BlueTang
 };
 
 string AquariumCreatureTypeToString(AquariumCreatureType t);
@@ -93,6 +95,54 @@ public:
     void draw() const override;
 };
 
+class ClownFish : public NPCreature{
+public:
+    ClownFish(float x, float y, int speed, std::shared_ptr<GameSprite> sprite);
+    void move() override;   
+    void draw() const override;
+private:
+    // hogar (anémona)
+    float homeX, homeY;
+
+    // estado del “reloj cucú”
+    enum class State { Hidden, Emerging, Roam, Returning, Rest };
+    State  state = State::Hidden;
+
+    // temporizadores
+    float stateEnd = 0.f;       // fin del estado actual
+    float nextCuckooAt = 0.f;   // cuándo toca salir de nuevo
+
+    // parámetros del comportamiento
+    float angle = 0.f;          // rumbo actual
+    float emergeDur = 0.9f;     // cuánto tarda en “salir” de la anémona
+    float roamDurMin = 2.0f, roamDurMax = 4.0f;
+    float restMin = 3.0f, restMax = 6.0f;
+    float intervalMin = 4.0f, intervalMax = 9.0f; // cada cuánto sale
+    float roamR = 120.f;        // radio de patrulla lejos del home
+
+    // utilidades
+    void scheduleNextCuckoo();  // programa la próxima salida
+    void setHidden(bool h);     // activa/desactiva colisión/visibilidad
+    bool hidden = true;
+};
+
+
+class BlueTang : public NPCreature {
+    public:
+        BlueTang(float x, float y, int speed, std::shared_ptr<GameSprite> sprite);
+        void move() override;
+        void draw() const override;
+    private:
+        float heading = 0.f;
+        float desiredHeading = 0.f;
+        float t = 0.f;
+        float baseSpeed = 90.f;
+        float sineAmp = 22.f, sineFreq = 1.2f;
+        float maxTurnRate = glm::radians(90.f);
+        float panicTimer = 0.f;
+};
+
+
 
 class AquariumSpriteManager {
     public:
@@ -102,6 +152,9 @@ class AquariumSpriteManager {
     private:
         std::shared_ptr<GameSprite> m_npc_fish;
         std::shared_ptr<GameSprite> m_big_fish;
+        std::shared_ptr<GameSprite> m_clown_fish;  // NEW , ClownFish
+        std::shared_ptr<GameSprite> m_blue_tang;   // NEW , BlueTang
+
 };
 
 
@@ -134,6 +187,22 @@ private:
     std::vector<std::shared_ptr<Creature>> m_next_creatures;
     std::vector<std::shared_ptr<AquariumLevel>> m_aquariumlevels;
     std::shared_ptr<AquariumSpriteManager> m_sprite_manager;
+
+
+
+    // --- Seafloor / anémonas ---
+    struct Anemone { float x, y, r; };      
+
+    std::vector<Anemone> m_anemones;        
+    bool  m_anemonesInit = false;
+    float m_sandHeight   = 80.f;
+    int   m_lastW = -1, m_lastH = -1;
+
+    ofImage m_anemoneImg;                   // imagen de anémona
+    float   m_anemoneW = 120.f;
+    float   m_anemoneH = 120.f;
+
+    void initSeafloor();
 };
 
 
@@ -185,7 +254,8 @@ class Level_2 : public AquariumLevel  {
         Level_2(int levelNumber, int targetScore): AquariumLevel(levelNumber, targetScore){
             this->m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::NPCreature, 30));
             this->m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::BiggerFish, 5));
-
+            this->m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::ClownFish, 6));
+            this->m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::BlueTang, 6));
         };
         std::vector<AquariumCreatureType> Repopulate() override;
 
