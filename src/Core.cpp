@@ -95,14 +95,14 @@ bool checkCollision(std::shared_ptr<Creature> a, std::shared_ptr<Creature> b) {
 
 
 
-string GameSceneKindToString(GameSceneKind t){
-    switch(t)
-    {
-        case GameSceneKind::GAME_INTRO: return "GAME_INTRO";
+std::string GameSceneKindToString(GameSceneKind t) {
+    switch (t) {
+        case GameSceneKind::GAME_INTRO:    return "GAME_INTRO";
         case GameSceneKind::AQUARIUM_GAME: return "AQUARIUM_GAME";
-        case GameSceneKind::GAME_OVER: return "GAME_OVER";
-    };
-};
+        case GameSceneKind::GAME_OVER:     return "GAME_OVER";
+        default:                           return "UNKNOWN_SCENE";
+    }
+}
 
 std::shared_ptr<GameScene> GameSceneManager::GetScene(string name){
     if(!this->HasScenes()){return nullptr;}
