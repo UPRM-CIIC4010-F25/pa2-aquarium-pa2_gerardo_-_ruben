@@ -2,6 +2,8 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
+    
+
 
     bgm.load("music/music.mp3");// Load background music
     bgm.setLoop(true); // Enable looping

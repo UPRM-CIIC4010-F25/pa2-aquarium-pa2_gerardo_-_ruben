@@ -1,5 +1,10 @@
 #include "Aquarium.h"
 #include <cstdlib>
+#include <cmath>
+#include <algorithm>
+#include <ofMain.h>
+
+
 
 
 string AquariumCreatureTypeToString(AquariumCreatureType t){
@@ -8,6 +13,12 @@ string AquariumCreatureTypeToString(AquariumCreatureType t){
             return "BiggerFish";
         case AquariumCreatureType::NPCreature:
             return "BaseFish";
+        case AquariumCreatureType::PufferFish: //new
+            return "PufferFish";
+        case AquariumCreatureType::Angelfish: //new
+            return "Angelfish";
+        case AquariumCreatureType::Surgeonfish: //new fishes
+            return "Surgeonfish";
         default:
             return "UknownFish";
     }
@@ -154,6 +165,137 @@ void BiggerFish::draw() const {
     ofLogVerbose() << "BiggerFish at (" << m_x << ", " << m_y << ") with speed " << m_speed << std::endl;
     this->m_sprite->draw(this->m_x, this->m_y);
 }
+//#################### PufferFish implementation ########################################
+PufferFish::PufferFish(float x, float y, int speed, std::shared_ptr<GameSprite> sprite)
+: NPCreature(x, y, std::max(1, speed/2), sprite)
+, m_tick(0), m_cycleLen(150), m_inflateLen(45)
+, m_baseRadius(38.0f), m_inflatedRadius(54.0f) {
+    do { m_dx = (rand()%3)-1; m_dy = (rand()%3)-1; } while (m_dx==0 && m_dy==0);
+    normalize();
+    setCollisionRadius((int)m_baseRadius);
+    m_value = 4;
+    m_creatureType = AquariumCreatureType::PufferFish;
+}
+void PufferFish::move() {
+    const float MAXX = ofGetWidth()  - 20.0f;
+    const float MAXY = ofGetHeight() - 20.0f;
+
+    ++m_tick;
+    int t = m_tick % m_cycleLen;
+    bool inflated = (t < m_inflateLen);
+    float speedFactor = inflated ? 0.55f : 1.0f;
+
+    setCollisionRadius(inflated ? (int)m_inflatedRadius : (int)m_baseRadius);
+
+    float wobble = std::sin(0.06f * m_tick) * 0.35f;
+    m_x += m_dx * (m_speed * speedFactor) + wobble;
+    m_y += m_dy * (m_speed * speedFactor) - wobble * 0.6f;
+
+    if (m_sprite) m_sprite->setFlipped(m_dx < 0);
+    bounce();
+
+    if (m_x <= 0 || m_x + getCollisionRadius()*2 >= MAXX
+     || m_y <= 0 || m_y + getCollisionRadius()*2 >= MAXY) {
+        do { m_dx = (rand()%3)-1; m_dy = (rand()%3)-1; } while (m_dx==0 && m_dy==0);
+        normalize();
+    }
+}
+
+
+
+
+
+void PufferFish::draw() const {
+    if (m_sprite) m_sprite->draw(m_x, m_y);
+}
+//############################ AngelFish Implementation #####################################
+Angelfish::Angelfish(float x, float y, int speed, std::shared_ptr<GameSprite> sprite)
+: NPCreature(x, y, std::max(1, speed-1), sprite), m_phase(0.0f) {
+    m_dx = (rand()%2==0) ? 0.5f : -0.5f;
+    m_dy = 1.0f;
+    normalize();
+    setCollisionRadius(44);
+    m_value = 3;
+    m_creatureType = AquariumCreatureType::Angelfish;
+}
+
+void Angelfish::move() {
+    const float MAXX = ofGetWidth()  - 20.0f;
+    const float MAXY = ofGetHeight() - 20.0f;
+
+    m_phase += 0.05f;
+    float vy = 1.2f + std::sin(m_phase) * 0.6f;
+
+    m_x += m_dx * m_speed * 0.8f;
+    m_y += vy  * (m_speed * 0.9f);
+
+    if (m_sprite) m_sprite->setFlipped(m_dx < 0);
+    bounce();
+
+    if (m_y <= 0 || m_y + getCollisionRadius()*2 >= MAXY) {
+        m_phase += 3.14159f;
+        m_dy = -m_dy;
+    }
+    if (m_x <= 0 || m_x + getCollisionRadius()*2 >= MAXX) {
+        m_dx = -m_dx;
+    }
+}
+
+
+void Angelfish::draw() const {
+    if (m_sprite) m_sprite->draw(m_x, m_y);
+}
+
+//########################### SurgeonFish Implementation ######################################3
+Surgeonfish::Surgeonfish(float x, float y, int speed, std::shared_ptr<GameSprite> sprite)
+: NPCreature(x, y, speed, sprite), m_tick(0) {
+    do { m_dx = (rand()%3)-1; m_dy = (rand()%3)-1; } while (m_dx==0 && m_dy==0);
+    normalize();
+    setCollisionRadius(42);
+    m_value = 3;
+    m_creatureType = AquariumCreatureType::Surgeonfish;
+
+    m_targetX = x + ((rand()%61)-30);
+    m_targetY = y + ((rand()%61)-30);
+}
+
+void Surgeonfish::move() {
+    const float MAXX = ofGetWidth()  - 20.0f;
+    const float MAXY = ofGetHeight() - 20.0f;
+
+    ++m_tick;
+    if (m_tick % 120 == 0) {
+        m_targetX = clampf(m_x + ((rand()%201)-100), 20.0f, MAXX - 20.0f);
+        m_targetY = clampf(m_y + ((rand()%201)-100), 20.0f, MAXY - 20.0f);
+    }
+
+    float tx = m_targetX - (m_x + getCollisionRadius());
+    float ty = m_targetY - (m_y + getCollisionRadius());
+    float len = std::sqrt(tx*tx + ty*ty);
+    if (len > 1e-4f) { tx/=len; ty/=len; }
+
+    m_dx = 0.80f * m_dx + 0.20f * tx;
+    m_dy = 0.80f * m_dy + 0.20f * ty;
+    normalize();
+
+    m_x += m_dx * m_speed;
+    m_y += m_dy * m_speed;
+
+    if (m_sprite) m_sprite->setFlipped(m_dx < 0);
+    bounce();
+
+    if (m_x <= 0 || m_x + getCollisionRadius()*2 >= MAXX
+     || m_y <= 0 || m_y + getCollisionRadius()*2 >= MAXY) {
+        m_targetX = clampf(MAXX/2.0f + ((rand()%201)-100), 20.0f, MAXX - 20.0f);
+        m_targetY = clampf(MAXY/2.0f + ((rand()%201)-100), 20.0f, MAXY - 20.0f);
+    }
+}
+
+
+
+void Surgeonfish::draw() const {
+    if (m_sprite) m_sprite->draw(m_x, m_y);
+}
 
 
 // AquariumSpriteManager
@@ -161,6 +303,10 @@ AquariumSpriteManager::AquariumSpriteManager(){
     this->m_npc_fish = std::make_shared<GameSprite>("base-fish.png", 70,70);
     this->m_big_fish = std::make_shared<GameSprite>("bigger-fish.png", 120, 120);
     this->m_speed_powerup = std::make_shared<GameSprite>("powerup-speed.png", 48, 48);
+     // NUEVOS PECES
+    this->m_puffer_fish = std::make_shared<GameSprite>("puffer_fish.png",  92, 92);
+    this->m_angelfish = std::make_shared<GameSprite>("angelfish.png",    90, 90);
+    this->m_surgeonfish = std::make_shared<GameSprite>("surgeonfish.png",  96, 76);
 }
 
 std::shared_ptr<GameSprite> AquariumSpriteManager::GetSprite(AquariumCreatureType t){
@@ -170,6 +316,12 @@ std::shared_ptr<GameSprite> AquariumSpriteManager::GetSprite(AquariumCreatureTyp
             
         case AquariumCreatureType::NPCreature:
             return std::make_shared<GameSprite>(*this->m_npc_fish);
+        case AquariumCreatureType::PufferFish:
+            return std::make_shared<GameSprite>(*this->m_puffer_fish);
+        case AquariumCreatureType::Angelfish:
+            return std::make_shared<GameSprite>(*this->m_angelfish);
+        case AquariumCreatureType::Surgeonfish:
+            return std::make_shared<GameSprite>(*this->m_surgeonfish);
         default:
             return nullptr;
     }
@@ -180,6 +332,7 @@ std::shared_ptr<GameSprite> AquariumSpriteManager::GetSprite(AquariumCreatureTyp
 Aquarium::Aquarium(int width, int height, std::shared_ptr<AquariumSpriteManager> spriteManager)
     : m_width(width), m_height(height) {
         m_sprite_manager =  spriteManager;
+
     }
 
 
@@ -277,6 +430,15 @@ void Aquarium::SpawnCreature(AquariumCreatureType type) {
             break;
         case AquariumCreatureType::BiggerFish:
             this->addCreature(std::make_shared<BiggerFish>(x, y, speed, this->m_sprite_manager->GetSprite(AquariumCreatureType::BiggerFish)));
+            break;
+        case AquariumCreatureType::PufferFish:
+            this->addCreature(std::make_shared<PufferFish>(x, y, speed, this->m_sprite_manager->GetSprite(AquariumCreatureType::PufferFish)));
+            break;
+        case AquariumCreatureType::Angelfish:
+            this->addCreature(std::make_shared<Angelfish>(x, y, speed, this->m_sprite_manager->GetSprite(AquariumCreatureType::Angelfish)));
+            break;
+        case AquariumCreatureType::Surgeonfish:
+            this->addCreature(std::make_shared<Surgeonfish>(x, y, speed, this->m_sprite_manager->GetSprite(AquariumCreatureType::Surgeonfish)));
             break;
         default:
             ofLogError() << "Unknown creature type to spawn!";
