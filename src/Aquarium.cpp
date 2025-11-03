@@ -479,7 +479,6 @@ void Aquarium::Repopulate() {
     }
 }
 
-
 // Aquarium collision detection
 std::shared_ptr<GameEvent> DetectAquariumCollisions(std::shared_ptr<Aquarium> aquarium, std::shared_ptr<PlayerCreature> player) {
     if (!aquarium || !player) return nullptr;
@@ -491,6 +490,7 @@ std::shared_ptr<GameEvent> DetectAquariumCollisions(std::shared_ptr<Aquarium> aq
         }
     }
     return nullptr;
+    
 };
 
 //  Imlementation of the AquariumScene
@@ -676,6 +676,42 @@ std::vector<AquariumCreatureType> Level_2::Repopulate() {
             for(int i=0; i<delta; i++){
                 toRepopulate.push_back(node->creatureType);
             }
+            node->currentPopulation += delta;
+        }
+    }
+    return toRepopulate;
+}
+
+std::vector<AquariumCreatureType> Level_3::Repopulate() {
+    std::vector<AquariumCreatureType> toRepopulate;
+    for (auto& node : m_levelPopulation) {
+        int delta = node->population - node->currentPopulation;
+        if (delta > 0) {
+            for (int i = 0; i < delta; ++i) toRepopulate.push_back(node->creatureType);
+            node->currentPopulation += delta;
+        }
+    }
+    return toRepopulate;
+}
+
+std::vector<AquariumCreatureType> Level_4::Repopulate() {
+    std::vector<AquariumCreatureType> toRepopulate;
+    for (auto& node : m_levelPopulation) {
+        int delta = node->population - node->currentPopulation;
+        if (delta > 0) {
+            for (int i = 0; i < delta; ++i) toRepopulate.push_back(node->creatureType);
+            node->currentPopulation += delta;
+        }
+    }
+    return toRepopulate;
+}
+
+std::vector<AquariumCreatureType> Level_5::Repopulate() {
+    std::vector<AquariumCreatureType> toRepopulate;
+    for (auto& node : m_levelPopulation) {
+        int delta = node->population - node->currentPopulation;
+        if (delta > 0) {
+            for (int i = 0; i < delta; ++i) toRepopulate.push_back(node->creatureType);
             node->currentPopulation += delta;
         }
     }

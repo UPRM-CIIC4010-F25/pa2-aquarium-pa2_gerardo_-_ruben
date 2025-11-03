@@ -85,8 +85,8 @@ public:
     int  speedBoostFramesLeft() const { return m_speedBoostFrames; }
 
 private:
-    int m_score = 0;
-    int m_lives = 3;
+    int m_score = 30;
+    int m_lives = 50;
     int m_power = 1; // mark current power lvl
     int m_damage_debounce = 0; // frames to wait after eating
 
@@ -265,6 +265,46 @@ public:
         m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::Angelfish, 5));
         m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::Surgeonfish, 4));
     };
+    std::vector<AquariumCreatureType> Repopulate() override;
+};
+
+class Level_3 : public AquariumLevel  {
+public:
+    Level_3(int levelNumber, int targetScore)
+    : AquariumLevel(levelNumber, targetScore) {
+        // más variedad, introducimos Puffer y Angelfish
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::NPCreature, 18));
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::BiggerFish, 6));
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::PufferFish, 4));
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::Angelfish, 6));
+    }
+    std::vector<AquariumCreatureType> Repopulate() override;
+};
+
+class Level_4 : public AquariumLevel  {
+public:
+    Level_4(int levelNumber, int targetScore)
+    : AquariumLevel(levelNumber, targetScore) {
+        // metemos Surgeonfish y subimos densidad
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::NPCreature, 20));
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::BiggerFish, 8));
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::Angelfish, 6));
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::Surgeonfish, 6));
+    }
+    std::vector<AquariumCreatureType> Repopulate() override;
+};
+
+class Level_5 : public AquariumLevel  {
+public:
+    Level_5(int levelNumber, int targetScore)
+    : AquariumLevel(levelNumber, targetScore) {
+        // ecosistema “adulto”: muchos peces y mezcla completa
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::NPCreature, 22));
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::BiggerFish, 10));
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::PufferFish, 6));
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::Angelfish, 8));
+        m_levelPopulation.push_back(std::make_shared<AquariumLevelPopulationNode>(AquariumCreatureType::Surgeonfish, 8));
+    }
     std::vector<AquariumCreatureType> Repopulate() override;
 };
 
