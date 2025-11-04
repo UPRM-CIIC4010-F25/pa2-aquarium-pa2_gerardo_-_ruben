@@ -58,20 +58,19 @@ class AquariumLevel : public GameLevel {
 
 class PlayerCreature : public Creature {
 public:
-
     PlayerCreature(float x, float y, int speed, std::shared_ptr<GameSprite> sprite);
-    void move();
-    void draw() const;
+    void move() override;
+    void draw() const override;
     void update();
     void changeSpeed(int speed);
     void setLives(int lives) { m_lives = lives; }
     void setDirection(float dx, float dy);
     float isXDirectionActive() { return m_dx != 0; }
-    float isYDirectionActive() {return m_dy != 0; }
+    float isYDirectionActive() { return m_dy != 0; }
     float getDx() { return m_dx; }
     float getDy() { return m_dy; }
 
-    int getScore()const { return m_score; }
+    int getScore() const { return m_score; }
     int getLives() const { return m_lives; }
     int getPower() const { return m_power; }
     
@@ -84,17 +83,25 @@ public:
     bool hasSpeedBoost() const { return m_speedBoostFrames > 0; }
     int  speedBoostFramesLeft() const { return m_speedBoostFrames; }
 
-private:
-    int m_score = 0;
-    int m_lives = 3;
-    int m_power = 1; // mark current power lvl
-    int m_damage_debounce = 0; // frames to wait after eating
+    void eatFish();
+    void resetBounce();
 
-    int m_baseSpeed = 0;
-    int m_speedBoostFrames = 0;
-    int m_speedCap = 0;
-    
+private:
+    int   m_score = 0;
+    int   m_lives = 3;
+    int   m_power = 1;
+    int   m_damage_debounce = 0;
+
+    int   m_baseSpeed = 0;
+    int   m_speedBoostFrames = 0;
+    int   m_speedCap = 0;
+
+    float m_dx = 0.0f;
+    float m_dy = 0.0f;
+
+    bool  m_hasEatenFish = false;
 };
+
 
 class NPCreature : public Creature {
 public:

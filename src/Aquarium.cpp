@@ -106,6 +106,14 @@ void PlayerCreature::loseLife(int debounce) {
     }
 }
 
+void PlayerCreature::eatFish() {
+    m_hasEatenFish = true;
+}
+
+void PlayerCreature::resetBounce() {
+    m_hasEatenFish = false;
+}
+
 // NPCreature Implementation
 NPCreature::NPCreature(float x, float y, int speed, std::shared_ptr<GameSprite> sprite)
 : Creature(x, y, speed, 30, 1, sprite) {
@@ -495,26 +503,22 @@ std::shared_ptr<GameEvent> DetectAquariumCollisions(std::shared_ptr<Aquarium> aq
 
 //  Imlementation of the AquariumScene
 
-void AquariumGameScene::Update(){
+// Aquarium.cpp
+void AquariumGameScene::Update() {
     std::shared_ptr<GameEvent> event;
+    m_player->update();
 
-    this->m_player->update();
+    if (updateControl.tick()) {
+        event = DetectAquariumCollisions(m_aquarium, m_player);
 
-    if (this->updateControl.tick()) {
-        event = DetectAquariumCollisions(this->m_aquarium, this->m_player);
+        if (event && event->isCollisionEvent()) {
+            if (event->creatureB) {
+                auto a = m_player;
+                auto b = event->creatureB;
 
-        if (event != nullptr && event->isCollisionEvent()) {
-            ofLogVerbose() << "Collision detected between player and NPC!" << std::endl;
-
-            if (event->creatureB != nullptr) {
-                event->print();
-                {
-                    auto a = this->m_player;
-                    auto b = event->creatureB;
-
+                if (a->getPower() < b->getValue()) {
                     float ar = a->getCollisionRadius();
                     float br = b->getCollisionRadius();
-
                     float ax = a->getX() + ar, ay = a->getY() + ar;
                     float bx = b->getX() + br, by = b->getY() + br;
                     float nx = ax - bx, ny = ay - by;
@@ -530,57 +534,46 @@ void AquariumGameScene::Update(){
                         a->reflect( nx, ny);
                         b->reflect(-nx,-ny);
                     }
-                }
-                if (this->m_player->getPower() < event->creatureB->getValue()) {
-                    ofLogNotice() << "Player is too weak to eat the creature!" << std::endl;
-                    this->m_player->loseLife(3*60); // 3 seconds @60fps
-                    {
-                        float ar = this->m_player->getCollisionRadius();
-                        float br = event->creatureB->getCollisionRadius();
-                        float ax = this->m_player->getX() + ar, ay = this->m_player->getY() + ar;
-                        float bx = event->creatureB->getX() + br, by = event->creatureB->getY() + br;
-                        float kx = ax - bx, ky = ay - by;
-                        float klen = std::sqrt(kx*kx + ky*ky);
-                        if (klen > 1e-6f) { kx /= klen; ky /= klen; }
-                        this->m_player->translate(kx * 12.0f, ky * 12.0f);
-                    }
 
-                    if (this->m_player->getLives() <= 0) {
-                        this->m_lastEvent = std::make_shared<GameEvent>(GameEventType::GAME_OVER, this->m_player, nullptr);
+                    a->loseLife(3*60);
+
+                    if (a->getLives() <= 0) {
+                        m_lastEvent = std::make_shared<GameEvent>(GameEventType::GAME_OVER, a, nullptr);
                         return;
                     }
                 } else {
-                    this->m_aquarium->removeCreature(event->creatureB);
-                    this->m_player->addToScore(1, event->creatureB->getValue());
-                    if (this->m_player->getScore() % 25 == 0) {
-                        this->m_player->increasePower(1);
-                        ofLogNotice() << "Player power increased to " << this->m_player->getPower() << "!" << std::endl;
+                    // STRONG ENOUGH → eat without any bounce/reflect
+                    m_aquarium->removeCreature(b);
+                    m_player->addToScore(1, b->getValue());
+                    m_player->eatFish();
+
+                    if (m_player->getScore() % 25 == 0) {
+                        m_player->increasePower(1);
                     }
                 }
+            }
+        }
 
-            } else {
-                ofLogError() << "Error: creatureB is null in collision event." << std::endl;
+        auto& powerUps = const_cast<std::vector<PowerUpItem>&>(m_aquarium->getPowerUps());
+        for (size_t i = 0; i < powerUps.size();) {
+            const PowerUpItem& p = powerUps[i];
+            float ar = m_player->getCollisionRadius();
+            float dx = (m_player->getX() + ar) - p.x;
+            float dy = (m_player->getY() + ar) - p.y;
+            float rr = ar + p.radius;
+            if (dx*dx + dy*dy <= rr*rr) {
+                m_player->activateSpeedBoost(2.0f, 10 * 60);
+                m_aquarium->removePowerUpAt(i);
+                continue;
             }
+            ++i;
         }
-        {
-            auto& powerUps = const_cast<std::vector<PowerUpItem>&>(m_aquarium->getPowerUps());
-            for (size_t i = 0; i < powerUps.size();) {
-                const PowerUpItem& p = powerUps[i];
-                float ar = m_player->getCollisionRadius();
-                float dx = (m_player->getX() + ar) - p.x;
-                float dy = (m_player->getY() + ar) - p.y;
-                float rr = ar + p.radius;
-                if (dx*dx + dy*dy <= rr*rr) {
-                    m_player->activateSpeedBoost(2.0f, 10 * 60);
-                    m_aquarium->removePowerUpAt(i);
-                    continue;
-                }
-                ++i;
-            }
-        }
-        this->m_aquarium->update();
+
+        m_aquarium->update();
     }
 }
+
+
 
 
 void AquariumGameScene::Draw() {
